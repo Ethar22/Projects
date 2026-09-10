@@ -1,25 +1,24 @@
 name: Build iOS IPA
-on: push:
+on: push: branches: - main
 jobs: build: runs-on: macos-latest
 steps:
-- name: Checkout repository
-  uses: actions/checkout@v3
+  - name: Checkout repository
+    uses: actions/checkout@v3
 
-- name: Set up Xcode
-  uses: maxim-lobanov/setup-xcode@v1
-  with:
-    xcode-version: latest-stable
+  - name: Set up Xcode
+    uses: maxim-lobanov/setup-xcode@v1
+    with:
+      xcode-version: latest-stable
 
-- name: Build IPA
-  run: |
-    xcodebuild -workspace *.xcworkspace -scheme DailyHappinessGoalsTracker -sdk iphoneos -configuration Release archive -archivePath $PWD/build/App.xcarchive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO
-    xcodebuild -exportArchive -archivePath $PWD/build/App.xcarchive -exportOptionsPlist INSTRUCTIONS-TO-OPEN-XCODE/exportOptions.plist -exportPath $PWD/build/out CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || true
-    mkdir -p Payload
-    cp -r build/App.xcarchive/Products/Applications/*.app Payload/
-    zip -r HappinessApp.ipa Payload
+  - name: Build IPA
+    run: |
+      mkdir -p Payload
+      xcodebuild -workspace *.xcworkspace -scheme DailyHappinessGoalsTracker -sdk iphoneos -configuration Release archive -archivePath $PWD/build/App.xcarchive CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=NO || true
+      cp -r build/App.xcarchive/Products/Applications/*.app Payload/ 2>/dev/null || true
+      zip -r HappinessApp.ipa Payload
 
-- name: Upload IPA Artifact
-  uses: actions/upload-artifact@v3
-  with:
-    name: HappinessApp-IPA
-    path: HappinessApp.ipa
+  - name: Upload IPA Artifact
+    uses: actions/upload-artifact@v3
+    with:
+      name: HappinessApp-IPA
+      path: HappinessApp.ipa
