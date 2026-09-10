@@ -1,5 +1,5 @@
 {
-  "name": "Daily Happiness",
+  "name": "Daily Happiness Tracker",
   "short_name": "Happiness",
   "description": "Daily Happiness and Goals Tracker",
   "start_url": "/",
@@ -8,7 +8,8 @@
   "theme_color": "#FFFBF3",
   "icons": [
     {
-      "src": "https://raw.githubusercontent.com/ethar22/Projects/main/icon.png",
+      "src": "https://ethar22.github.io/
+      Projects/icon.png",
       "sizes": "512x512",
       "type": "image/png"
     }
