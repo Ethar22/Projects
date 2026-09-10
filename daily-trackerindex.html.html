@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Happiness">
+<meta name="theme-color" content="#FFFBF3">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23FF9F1C'/%3E%3Ctext x='50' y='66' font-size='58' text-anchor='middle'%3E%F0%9F%8C%A4%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<title>Daily Happiness & Goals Tracker</title>
+<style>
+  /*
+    Color choices, grounded in color-emotion research (color-in-context / circumplex studies):
+    Amber-orange  -> combines red's arousal with yellow's positivity = the strongest driver of
+                     motivation/action in color-emotion studies (higher than coral alone).
+    Blue          -> most consistently linked to calm, trust, and sustained focus; lowers arousal
+                     just enough to support concentration without dulling energy.
+    Green         -> hope, balance, growth; the "you're on track" signal.
+    Gold/yellow   -> most strongly associated with joy/optimism across color-emotion studies —
+                     used specifically for the "great mood" state for that reason.
+    Warm off-white / deep navy backgrounds instead of stark white/black -> gentler on the eyes,
+    navy reads as calm-focused rather than harsh at night.
+  */
+  :root {
+    --bg: #FFFBF3;
+    --card: #FFFFFF;
+    --accent: #FF9F1C;
+    --accent-soft: #FFEBC7;
+    --secondary: #2D9CDB;
+    --secondary-soft: #DCEEFB;
+    --text: #2B2420;
+    --muted: #8C8175;
+    --border: #F0E6D8;
+    --green: #27AE60;
+    --live-grad-1: #23262B;
+    --live-grad-2: #3A3F47;
+    --live-text: #FBF7F2;
+  }
+  html[data-theme="dark"] {
+    --bg: #12141C;
+    --card: #1B1E28;
+    --accent: #FFB443;
+    --accent-soft: #3A2E1C;
+    --secondary: #4DB2F0;
+    --secondary-soft: #17293A;
+    --text: #F1EDE7;
+    --muted: #8F97A8;
+    --border: #2A2E3B;
+    --green: #34C77E;
+    --live-grad-1: #0C0E15;
+    --live-grad-2: #1E2230;
+    --live-text: #F1EDE7;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; overscroll-behavior-y: none; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: calc(16px + env(safe-area-inset-top)) 14px calc(90px + env(safe-area-inset-bottom));
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: background 0.25s, color 0.25s;
+  }
+  textarea, input { -webkit-user-select: text; user-select: text; }
+
+  .wrap { max-width: 520px; margin: 0 auto; }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; }
+  h1 { font-size: 21px; margin: 4px 0 2px; }
+  .date { color: var(--muted); font-size: 13px; margin-bottom: 16px; }
+
+  .theme-toggle {
+    width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--border);
+    background: var(--card); font-size: 17px; cursor: pointer; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; margin-top: 2px;
+  }
+  .top-actions { display: flex; gap: 8px; }
+
+  .reminder-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .reminder-row + .reminder-row { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .reminder-time-input {
+    border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px; font-size: 15px;
+    background: var(--bg); color: var(--text); font-family: inherit;
+  }
+  .switch { position: relative; width: 46px; height: 26px; flex-shrink: 0; }
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch-track {
+    position: absolute; inset: 0; background: var(--border); border-radius: 999px; cursor: pointer; transition: 0.2s;
+  }
+  .switch-track:before {
+    content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+    background: white; border-radius: 50%; transition: 0.2s;
+  }
+  .switch input:checked + .switch-track { background: var(--accent); }
+  .switch input:checked + .switch-track:before { transform: translateX(20px); }
+  .reminder-hint { font-size: 12px; color: var(--muted); margin-top: 10px; line-height: 1.4; }
+  .enable-notif-btn {
+    width: 100%; border: none; background: var(--accent); color: white; border-radius: 10px;
+    padding: 11px 0; font-size: 14px; font-weight: 600; cursor: pointer; margin-top: 4px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 18px;
+    margin-bottom: 16px;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .card h2 {
+    font-size: 14px;
+    margin: 0 0 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .live-card {
+    background: linear-gradient(135deg, var(--live-grad-1) 0%, var(--live-grad-2) 100%);
+    color: var(--live-text);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .live-clock { font-size: 30px; font-weight: 700; letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+  .live-date { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+  .live-weather { text-align: right; }
+  .live-weather .wicon { font-size: 30px; line-height: 1; }
+  .live-weather .wtemp { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .live-weather .wplace { font-size: 11px; opacity: 0.7; max-width: 140px; }
+  .live-weather .wstatus { font-size: 11px; opacity: 0.65; cursor: pointer; text-decoration: underline; }
+
+  .motivation-card { background: var(--accent-soft); border: none; }
+  .motivation-card h2 { color: var(--accent); }
+  .motivation-text { font-size: 16px; line-height: 1.5; font-weight: 500; }
+
+  .mood-row { display: flex; justify-content: space-between; gap: 6px; }
+  .mood-btn {
+    flex: 1; border: 2px solid var(--border); background: var(--bg);
+    border-radius: 12px; padding: 10px 0; font-size: 24px; cursor: pointer; transition: 0.15s;
+  }
+  .mood-btn.selected { border-color: var(--accent); background: var(--accent-soft); transform: scale(1.05); }
+  textarea {
+    width: 100%; border: 1px solid var(--border); border-radius: 10px; padding: 10px;
+    font-family: inherit; font-size: 14px; resize: vertical; min-height: 60px;
+    background: var(--bg); color: var(--text);
+  }
+  .goal-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .goal-item:last-child { border-bottom: none; }
+  .goal-check {
+    width: 24px; height: 24px; border-radius: 7px; border: 2px solid var(--accent);
+    flex-shrink: 0; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 14px; background: transparent;
+  }
+  .goal-check.done { background: var(--accent); }
+  .goal-text { flex: 1; font-size: 15px; outline: none; border: none; background: transparent; color: var(--text); }
+  .goal-text.done { text-decoration: line-through; color: var(--muted); }
+  .del-btn { background: none; border: none; color: var(--muted); font-size: 18px; cursor: pointer; padding: 2px 6px; }
+  .add-goal { display: flex; gap: 8px; margin-top: 10px; }
+  .add-goal input {
+    flex: 1; border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px;
+    font-size: 14px; background: var(--bg); color: var(--text);
+  }
+  .add-goal button { border: none; background: var(--accent); color: white; border-radius: 10px; padding: 0 16px; font-size: 18px; cursor: pointer; }
+
+  .note-item { padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; gap: 10px; align-items: flex-start; }
+  .note-item:last-child { border-bottom: none; }
+  .note-body { flex: 1; }
+  .note-text { font-size: 14px; line-height: 1.4; white-space: pre-wrap; word-break: break-word; }
+  .note-time { font-size: 10px; color: var(--muted); margin-top: 3px; }
+  .add-note { display: flex; gap: 8px; margin-top: 10px; align-items: flex-end; }
+  .add-note textarea {
+    flex: 1; min-height: 40px; max-height: 120px;
+  }
+  .add-note button { border: none; background: var(--secondary); color: white; border-radius: 10px; padding: 0 16px; height: 40px; font-size: 18px; cursor: pointer; flex-shrink: 0; }
+
+  .streak { display: flex; align-items: center; justify-content: space-between; }
+  .streak-num { font-size: 28px; font-weight: 700; color: var(--accent); }
+  .streak-label { font-size: 13px; color: var(--muted); }
+  .history { display: flex; gap: 5px; margin-top: 10px; flex-wrap: wrap; }
+  .history-day {
+    width: 30px; height: 30px; border-radius: 8px; display: flex; align-items: center;
+    justify-content: center; font-size: 15px; background: var(--bg); border: 1px solid var(--border);
+  }
+
+  .cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .cal-nav-btn {
+    background: var(--accent-soft); border: none; color: var(--accent); width: 34px; height: 34px;
+    border-radius: 10px; font-size: 17px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  }
+  .cal-month-label { font-size: 16px; font-weight: 700; }
+  .cal-weekdays { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; color: var(--muted); font-size: 11px; margin: 10px 0 6px; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+  .cal-cell {
+    aspect-ratio: 1; border-radius: 11px; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    position: relative; cursor: pointer; border: 2px solid transparent; background: var(--bg); transition: 0.12s;
+  }
+  .cal-cell.empty { visibility: hidden; }
+  .cal-cell .daynum { font-size: 10px; color: var(--muted); position: absolute; top: 3px; left: 5px; }
+  .cal-cell .emoji { font-size: 17px; margin-top: 4px; }
+  .cal-cell.today { border-color: var(--accent); }
+  .cal-cell.selected { border-color: var(--text); }
+  .cal-cell .dot-row { position: absolute; bottom: 4px; display: flex; gap: 2px; }
+  .cal-cell .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); }
+
+  .cal-legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 11px; color: var(--muted); }
+  .cal-legend span { display: inline-flex; align-items: center; gap: 4px; }
+  .legend-swatch { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+
+  .day-detail { margin-top: 4px; }
+  .day-detail .dd-title { font-size: 15px; font-weight: 700; margin-bottom: 6px; }
+  .day-detail .dd-note { font-size: 13px; color: var(--muted); font-style: italic; margin-bottom: 10px; }
+  .dd-goal { font-size: 13px; padding: 5px 0; display: flex; align-items: center; gap: 8px; }
+  .dd-goal .tick { color: var(--green); font-weight: 700; }
+  .dd-goal .cross { color: var(--muted); }
+  .dd-empty { color: var(--muted); font-size: 13px; }
+
+  .month-stats { display: flex; gap: 10px; margin-top: 4px; }
+  .stat-box { flex: 1; background: var(--bg); border-radius: 12px; padding: 10px; text-align: center; }
+  .stat-num { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .save-note { text-align: center; color: var(--muted); font-size: 12px; margin-top: 10px; min-height: 16px; }
+  .loading { text-align: center; color: var(--muted); padding: 40px 0; }
+
+  .tabbar {
+    position: fixed; left: 0; right: 0; bottom: 0; background: color-mix(in srgb, var(--card) 92%, transparent);
+    backdrop-filter: blur(10px); border-top: 1px solid var(--border);
+    display: flex; padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    z-index: 10;
+  }
+  .tab-btn {
+    flex: 1; background: none; border: none; display: flex; flex-direction: column; align-items: center;
+    gap: 2px; padding: 4px 0; color: var(--muted); font-size: 10px; cursor: pointer;
+  }
+  .tab-btn .icon { font-size: 20px; }
+  .tab-btn.active { color: var(--accent); }
+
+  .ring-wrap { display: flex; justify-content: center; padding: 8px 0 4px; }
+  .ring-legend { display: flex; justify-content: center; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .ring-legend span { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .ring-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .detail-row {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 11px 0; border-bottom: 1px solid var(--border); font-size: 14px;
+  }
+  .detail-row:last-child { border-bottom: none; }
+  .detail-label { color: var(--muted); }
+  .detail-value { font-weight: 700; }
+
+  /* ---------- Motion & tactile feedback ---------- */
+  button, .mood-btn, .tab-btn, .cal-cell, .goal-check, .theme-toggle, .cal-nav-btn, .switch-track {
+    transition: transform 0.12s cubic-bezier(.34,1.56,.64,1), background 0.15s, border-color 0.15s;
+  }
+  button:active, .mood-btn:active, .tab-btn:active, .cal-cell:active, .goal-check:active,
+  .theme-toggle:active, .cal-nav-btn:active {
+    transform: scale(0.88);
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(10px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .card, .live-card { animation: cardIn 0.4s cubic-bezier(.22,1,.36,1) both; }
+  .card:nth-of-type(1) { animation-delay: 0.02s; }
+  .card:nth-of-type(2) { animation-delay: 0.08s; }
+  .card:nth-of-type(3) { animation-delay: 0.14s; }
+  .card:nth-of-type(4) { animation-delay: 0.2s; }
+
+  @keyframes moodPop {
+    0% { transform: scale(1); }
+    40% { transform: scale(1.25) rotate(-4deg); }
+    70% { transform: scale(0.95) rotate(2deg); }
+    100% { transform: scale(1.05) rotate(0); }
+  }
+  .mood-btn.selected { animation: moodPop 0.45s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes checkPop {
+    0% { transform: scale(0.6); }
+    55% { transform: scale(1.3); }
+    100% { transform: scale(1); }
+  }
+  .goal-check.done { animation: checkPop 0.35s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes tabBounce {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.25); }
+    100% { transform: scale(1); }
+  }
+  .tab-btn.active .icon { animation: tabBounce 0.4s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes streakPop {
+    0% { transform: scale(0.7); opacity: 0.3; }
+    60% { transform: scale(1.2); }
+    100% { transform: scale(1); opacity: 1; }
+  }
+  .streak-num { animation: streakPop 0.5s cubic-bezier(.34,1.56,.64,1); }
+
+  @keyframes ringDraw {
+    from { stroke-dashoffset: var(--ring-full); }
+  }
+  .progress-ring circle:nth-child(2n) { animation: ringDraw 1s cubic-bezier(.22,1,.36,1) both; }
+
+  .confetti-particle {
+    position: fixed; top: 0; left: 0; pointer-events: none; z-index: 999;
+    font-size: 18px; will-change: transform, opacity;
+    animation: confettiFly 0.9s cubic-bezier(.22,1,.36,1) forwards;
+  }
+  @keyframes confettiFly {
+    0% { transform: translate(var(--sx), var(--sy)) scale(0.6) rotate(0deg); opacity: 1; }
+    100% { transform: translate(calc(var(--sx) + var(--tx)), calc(var(--sy) + var(--ty))) scale(1.1) rotate(var(--r)); opacity: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top-row">
+    <div>
+      <h1 id="pageTitle">🌤️ Daily Happiness</h1>
+      <div class="date" id="dateLabel"></div>
+    </div>
+    <div class="top-actions">
+      <button class="theme-toggle" id="reminderToggleBtn" onclick="toggleReminderPanel()">🔔</button>
+      <button class="theme-toggle" id="themeToggle" onclick="toggleTheme()">🌙</button>
+    </div>
+  </div>
+  <div class="card" id="reminderPanel" style="display:none;"></div>
+  <div class="live-card">
+    <div>
+      <div class="live-clock" id="liveClock">--:--</div>
+      <div class="live-date" id="liveDate"></div>
+    </div>
+    <div class="live-weather" id="liveWeather">
+      <div class="wstatus" onclick="loadWeather()">tap for weather</div>
+    </div>
+  </div>
+
+  <div id="app" class="loading">Loading your tracker…</div>
+</div>
+
+<div class="tabbar">
+  <button class="tab-btn active" id="tabToday" onclick="switchTab('today')">
+    <div class="icon">☀️</div><div>Today</div>
+  </button>
+  <button class="tab-btn" id="tabCalendar" onclick="switchTab('calendar')">
+    <div class="icon">📅</div><div>Calendar</div>
+  </button>
+  <button class="tab-btn" id="tabProgress" onclick="switchTab('progress')">
+    <div class="icon">🎯</div><div>Progress</div>
+  </button>
+</div>
+
+<script>
+const MOODS = ["😞","😕","😐","🙂","😄"];
+/*
+  Mood-scale colors follow color-emotion association research (e.g. Kaya & Epps, and
+  cross-cultural color-emotion studies): blue tracks with low mood/sadness, violet with
+  unease, green with hope/calm-positive, and gold/yellow — the hue most consistently
+  linked to joy — is reserved for the best mood state rather than reused for accents.
+*/
+const MOOD_COLORS_LIGHT = ["#C3D6F2", "#D8CCEC", "#ECE2D2", "#C7E8C9", "#FCE39B"];
+const MOOD_COLORS_DARK  = ["#28395C", "#372B52", "#463F2E", "#1E4A2C", "#5A4718"];
+function moodColors() { return document.documentElement.getAttribute('data-theme') === 'dark' ? MOOD_COLORS_DARK : MOOD_COLORS_LIGHT; }
+function cssVar(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+
+let today = new Date();
+let todayKey = fmtKey(today);
+let currentTab = 'today';
+let calMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+let selectedDay = todayKey;
+let state = { moodByDate: {}, noteByDate: {}, goals: [], notesByDate: {} };
+let reminderPref = { enabled: false, time: "20:00", lastFiredDate: null };
+
+function fmtKey(d) {
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+document.getElementById("dateLabel").textContent = today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' });
+
+/* ---------- Theme ---------- */
+async function loadTheme() {
+  let theme = null;
+  try {
+    const r = await window.storage.get('theme-pref', false);
+    if (r && r.value) theme = r.value;
+  } catch (e) {}
+  if (!theme) theme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  applyTheme(theme);
+}
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  document.querySelector('meta[name="theme-color"]').setAttribute('content', theme === 'dark' ? '#12141C' : '#FBF7F2');
+}
+async function toggleTheme() {
+  const cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+  const next = cur === 'dark' ? 'light' : 'dark';
+  applyTheme(next);
+  try { await window.storage.set('theme-pref', next, false); } catch (e) {}
+  render();
+}
+
+/* ---------- 365 unique daily motivational lines (combinatorial, all original) ---------- */
+const QUOTE_A = [
+  "Every small step you take today adds up to something bigger.",
+  "You don't have to be perfect to be proud of your progress.",
+  "Today is a fresh page — write something good on it.",
+  "Your effort matters even on the days it doesn't feel like it.",
+  "Progress is still progress, no matter how slow.",
+  "You've gotten through every hard day so far — that's proof enough.",
+  "Small consistent actions build big results over time.",
+  "Be patient with yourself; growth isn't always visible right away.",
+  "You are allowed to rest and still be someone who's moving forward.",
+  "The fact that you're trying already puts you ahead.",
+  "One good decision today can shift the whole week.",
+  "Your future self is counting on what you do right now.",
+  "Discomfort today is often just the shape of growth.",
+  "You get to choose how you respond to today, and that's real power.",
+  "Nobody has it all figured out — keep going anyway.",
+  "Showing up today is a win, even if it doesn't feel like one.",
+  "You're capable of more than your doubts tell you.",
+  "A better day starts with one better choice.",
+  "You're not behind — you're on your own timeline."
+];
+const QUOTE_B = [
+  "Keep your eyes on your own goals, not everyone else's pace.",
+  "Celebrate the small wins; they're what the big ones are made of.",
+  "Take a deep breath — you've got more control than it feels like.",
+  "Trust the process, even the messy middle part.",
+  "You don't need to have it all figured out to take the next step.",
+  "Momentum starts with one thing done, not everything done.",
+  "Be proud of who you're becoming, not just what you're achieving.",
+  "Your energy is worth protecting today.",
+  "Difficult days are still part of a good story.",
+  "You're closer than you were yesterday, even if it's not obvious yet.",
+  "Give yourself the same grace you'd give a friend.",
+  "Focus on progress, not perfection.",
+  "The work you put in quietly today will show up later.",
+  "You're allowed to be a beginner at something new.",
+  "Today doesn't have to be perfect to be a good day.",
+  "Keep the promises you make to yourself, one at a time.",
+  "You have exactly what you need to handle today.",
+  "Growth is rarely loud — most of it happens quietly.",
+  "Choose one thing today and give it your full attention.",
+  "You are doing better than your inner critic gives you credit for."
+];
+function getDayOfYear(d) { const start = new Date(d.getFullYear(), 0, 0); return Math.floor((d - start) / 86400000); }
+function getQuoteForToday() {
+  const doy = getDayOfYear(today);
+  const i = doy % QUOTE_A.length;
+  const j = Math.floor(doy / QUOTE_A.length) % QUOTE_B.length;
+  return QUOTE_A[i] + " " + QUOTE_B[j];
+}
+
+/* ---------- Live clock ---------- */
+function tickClock() {
+  const now = new Date();
+  document.getElementById("liveClock").textContent = now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  document.getElementById("liveDate").textContent = now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+/* ---------- Weather (Open-Meteo, no API key) ---------- */
+const WCODE = {
+  0: ["☀️","Clear sky"], 1: ["🌤️","Mainly clear"], 2: ["⛅","Partly cloudy"], 3: ["☁️","Overcast"],
+  45: ["🌫️","Foggy"], 48: ["🌫️","Foggy"],
+  51: ["🌦️","Light drizzle"], 53: ["🌦️","Drizzle"], 55: ["🌦️","Heavy drizzle"],
+  56: ["🌧️","Freezing drizzle"], 57: ["🌧️","Freezing drizzle"],
+  61: ["🌧️","Light rain"], 63: ["🌧️","Rain"], 65: ["🌧️","Heavy rain"],
+  66: ["🌧️","Freezing rain"], 67: ["🌧️","Freezing rain"],
+  71: ["❄️","Light snow"], 73: ["❄️","Snow"], 75: ["❄️","Heavy snow"], 77: ["❄️","Snow grains"],
+  80: ["🌦️","Rain showers"], 81: ["🌦️","Rain showers"], 82: ["🌦️","Heavy showers"],
+  85: ["🌨️","Snow showers"], 86: ["🌨️","Snow showers"],
+  95: ["⛈️","Thunderstorm"], 96: ["⛈️","Thunderstorm"], 99: ["⛈️","Thunderstorm"]
+};
+function loadWeather() {
+  const box = document.getElementById("liveWeather");
+  box.innerHTML = `<div class="wstatus">loading…</div>`;
+  if (!navigator.geolocation) { box.innerHTML = `<div class="wstatus" onclick="loadWeather()">location unavailable</div>`; return; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const { latitude, longitude } = pos.coords;
+    try {
+      const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true&temperature_unit=fahrenheit`);
+      const data = await res.json();
+      const cw = data.current_weather;
+      const info = WCODE[cw.weathercode] || ["🌡️","Weather"];
+      let place = "";
+      try {
+        const geo = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+        const gdata = await geo.json();
+        place = gdata.city || gdata.locality || "";
+      } catch (e) {}
+      box.innerHTML = `<div class="wicon">${info[0]}</div><div class="wtemp">${Math.round(cw.temperature)}°F</div><div class="wplace">${place || info[1]}</div>`;
+    } catch (e) {
+      box.innerHTML = `<div class="wstatus" onclick="loadWeather()">couldn't load — retry</div>`;
+    }
+  }, () => { box.innerHTML = `<div class="wstatus" onclick="loadWeather()">enable location — tap to retry</div>`; }, { timeout: 8000 });
+}
+loadWeather();
+
+/* ---------- Reminders (local notifications, fire while the app is open) ---------- */
+async function loadReminderPref() {
+  try {
+    const r = await window.storage.get('reminder-pref', false);
+    if (r && r.value) reminderPref = { ...reminderPref, ...JSON.parse(r.value) };
+  } catch (e) {}
+}
+async function saveReminderPref() {
+  try { await window.storage.set('reminder-pref', JSON.stringify(reminderPref), false); } catch (e) {}
+}
+function toggleReminderPanel() {
+  const panel = document.getElementById('reminderPanel');
+  const open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (!open) renderReminderPanel();
+}
+function notifSupported() { return typeof Notification !== 'undefined'; }
+function notifPermission() { return notifSupported() ? Notification.permission : 'unsupported'; }
+
+async function requestNotifPermission() {
+  if (!notifSupported()) { renderReminderPanel(); return; }
+  await Notification.requestPermission();
+  renderReminderPanel();
+}
+async function setReminderEnabled(on) {
+  reminderPref.enabled = on;
+  if (on && notifPermission() !== 'granted') { await requestNotifPermission(); }
+  reminderPref.enabled = on && notifPermission() === 'granted';
+  await saveReminderPref();
+  renderReminderPanel();
+}
+async function setReminderTime(val) {
+  reminderPref.time = val;
+  await saveReminderPref();
+}
+function renderReminderPanel() {
+  const panel = document.getElementById('reminderPanel');
+  if (panel.style.display === 'none') return;
+  const perm = notifPermission();
+  let body = "";
+  if (!notifSupported()) {
+    body = `<div class="reminder-hint">Notifications aren't supported in this browser.</div>`;
+  } else if (perm !== 'granted') {
+    body = `
+      <div class="reminder-row">
+        <div>
+          <div style="font-weight:600;">Daily check-in reminder</div>
+          <div class="reminder-hint" style="margin-top:2px;">Get nudged to log your mood and goals each day.</div>
+        </div>
+      </div>
+      <button class="enable-notif-btn" onclick="requestNotifPermission()">Enable Notifications</button>
+      ${perm === 'denied' ? `<div class="reminder-hint">Notifications are blocked. Turn them on for this app in your device's notification settings, then tap Enable again.</div>` : ''}
+    `;
+  } else {
+    body = `
+      <div class="reminder-row">
+        <div style="font-weight:600;">Daily check-in reminder</div>
+        <label class="switch">
+          <input type="checkbox" ${reminderPref.enabled ? 'checked' : ''} onchange="setReminderEnabled(this.checked)">
+          <div class="switch-track"></div>
+        </label>
+      </div>
+      <div class="reminder-row">
+        <div class="reminder-hint" style="margin:0;">Remind me at</div>
+        <input type="time" class="reminder-time-input" value="${reminderPref.time}" onchange="setReminderTime(this.value)">
+      </div>
+      <div class="reminder-hint">Works while the app is open or recently used in the background. Fully closed apps can't reliably notify without a push server, so leaving it in your recent apps helps.</div>
+    `;
+  }
+  panel.innerHTML = `<h2>🔔 Reminders</h2>${body}`;
+}
+function checkReminderTick() {
+  if (!reminderPref.enabled || notifPermission() !== 'granted') return;
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2,'0');
+  const mm = String(now.getMinutes()).padStart(2,'0');
+  const nowKey = fmtKey(now);
+  if (`${hh}:${mm}` === reminderPref.time && reminderPref.lastFiredDate !== nowKey) {
+    try {
+      new Notification("🌤️ Daily Happiness", { body: "Time for your check-in — log your mood, goals, and any notes for today." });
+    } catch (e) {}
+    reminderPref.lastFiredDate = nowKey;
+    saveReminderPref();
+  }
+}
+setInterval(checkReminderTick, 20000);
+
+
+/* ---------- State persistence ---------- */
+async function loadState() {
+  try {
+    const result = await window.storage.get('tracker-state', false);
+    if (result && result.value) {
+      state = JSON.parse(result.value);
+      if (!state.goals) state.goals = [];
+      if (!state.moodByDate) state.moodByDate = {};
+      if (!state.noteByDate) state.noteByDate = {};
+      if (!state.notesByDate) state.notesByDate = {};
+    }
+  } catch (e) {}
+  render();
+}
+async function saveState() {
+  const note = document.getElementById("saveNote");
+  try {
+    await window.storage.set('tracker-state', JSON.stringify(state), false);
+    if (note) { note.textContent = "Saved ✓"; setTimeout(() => { if (note) note.textContent = ""; }, 1200); }
+  } catch (e) { if (note) note.textContent = "Couldn't save — try again"; }
+}
+
+function switchTab(tab) {
+  currentTab = tab;
+  document.getElementById("tabToday").classList.toggle("active", tab === 'today');
+  document.getElementById("tabCalendar").classList.toggle("active", tab === 'calendar');
+  document.getElementById("tabProgress").classList.toggle("active", tab === 'progress');
+  document.getElementById("pageTitle").textContent =
+    tab === 'today' ? '🌤️ Daily Happiness' : tab === 'calendar' ? '📅 Your Month' : '🎯 Your Progress';
+  document.getElementById("dateLabel").textContent =
+    tab === 'today' ? today.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+    : tab === 'calendar' ? 'Tap any day to see how it went'
+    : 'A full picture of how you\'re building your streak';
+  render();
+}
+
+function setMood(val, ev) { state.moodByDate[todayKey] = val; render(); saveState(); if (val === 4) burstConfetti(ev); }
+function setNote(val) { state.noteByDate[todayKey] = val; saveState(); }
+function addGoal(text) {
+  if (!text.trim()) return;
+  state.goals.push({ id: Date.now().toString(), text: text.trim(), doneDates: [] });
+  render(); saveState();
+}
+function toggleGoal(id, ev) {
+  const g = state.goals.find(g => g.id === id);
+  if (!g) return;
+  const idx = g.doneDates.indexOf(todayKey);
+  const nowDone = idx < 0;
+  if (idx >= 0) g.doneDates.splice(idx, 1); else g.doneDates.push(todayKey);
+  render(); saveState();
+  if (nowDone) burstConfetti(ev);
+}
+function editGoalText(id, text) {
+  const g = state.goals.find(g => g.id === id);
+  if (g) { g.text = text; saveState(); }
+}
+function deleteGoal(id) { state.goals = state.goals.filter(g => g.id !== id); render(); saveState(); }
+
+function addNote(text) {
+  if (!text.trim()) return;
+  if (!state.notesByDate[todayKey]) state.notesByDate[todayKey] = [];
+  state.notesByDate[todayKey].push({ id: Date.now().toString(), text: text.trim(), time: new Date().toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' }) });
+  render(); saveState();
+}
+function deleteNote(dateKey, id) {
+  if (!state.notesByDate[dateKey]) return;
+  state.notesByDate[dateKey] = state.notesByDate[dateKey].filter(n => n.id !== id);
+  render(); saveState();
+}
+function notesForDate(key) { return (state.notesByDate && state.notesByDate[key]) || []; }
+
+/* ---------- Confetti burst (small celebratory feedback) ---------- */
+function burstConfetti(ev) {
+  const x = (ev && ev.clientX) || window.innerWidth / 2;
+  const y = (ev && ev.clientY) || window.innerHeight / 2;
+  const bits = ["✨","🎉","⭐️","🎊","💫"];
+  const count = 12;
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement("div");
+    el.className = "confetti-particle";
+    el.textContent = bits[Math.floor(Math.random() * bits.length)];
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+    const dist = 60 + Math.random() * 60;
+    el.style.setProperty("--sx", x + "px");
+    el.style.setProperty("--sy", y + "px");
+    el.style.setProperty("--tx", Math.cos(angle) * dist + "px");
+    el.style.setProperty("--ty", Math.sin(angle) * dist + "px");
+    el.style.setProperty("--r", (Math.random() * 360 - 180) + "deg");
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 950);
+  }
+}
+
+function computeMoodStreak() {
+  let streak = 0; let d = new Date(today);
+  while (true) {
+    const key = fmtKey(d);
+    if (state.moodByDate[key] !== undefined) { streak++; d.setDate(d.getDate() - 1); } else break;
+  }
+  return streak;
+}
+function last7Days() {
+  const days = [];
+  for (let i = 6; i >= 0; i--) { const d = new Date(today); d.setDate(d.getDate() - i); days.push(fmtKey(d)); }
+  return days;
+}
+function goalsCompletedOnDate(key) { return state.goals.filter(g => g.doneDates.includes(key)).length; }
+function changeMonth(delta) { calMonth = new Date(calMonth.getFullYear(), calMonth.getMonth() + delta, 1); render(); }
+function selectDay(key) { selectedDay = key; render(); }
+
+function computeLongestStreak() {
+  const keys = Object.keys(state.moodByDate).sort();
+  if (keys.length === 0) return 0;
+  let longest = 1, run = 1;
+  for (let i = 1; i < keys.length; i++) {
+    const prev = new Date(keys[i-1] + "T00:00:00");
+    const cur = new Date(keys[i] + "T00:00:00");
+    const diffDays = Math.round((cur - prev) / 86400000);
+    if (diffDays === 1) { run++; longest = Math.max(longest, run); } else { run = 1; }
+  }
+  return longest;
+}
+function computeOverallStats() {
+  const moodEntries = Object.values(state.moodByDate);
+  const daysTracked = moodEntries.length;
+  const avgMoodRaw = daysTracked ? moodEntries.reduce((a,b) => a+b, 0) / daysTracked : null;
+  const moodPct = avgMoodRaw !== null ? Math.round((avgMoodRaw / 4) * 100) : 0;
+  const totalGoalCompletions = state.goals.reduce((sum,g) => sum + g.doneDates.length, 0);
+  const possibleCompletions = state.goals.length * Math.max(daysTracked, 1);
+  const goalsPct = state.goals.length > 0 ? Math.min(100, Math.round((totalGoalCompletions / possibleCompletions) * 100)) : 0;
+  const currentStreak = computeMoodStreak();
+  const longestStreak = computeLongestStreak();
+  const consistencyPct = Math.round(Math.min(currentStreak / 30, 1) * 100);
+  const overallPct = state.goals.length > 0
+    ? Math.round((moodPct + goalsPct + consistencyPct) / 3)
+    : Math.round((moodPct + consistencyPct) / 2);
+  return { daysTracked, avgMoodRaw, moodPct, totalGoalCompletions, goalsPct, currentStreak, longestStreak, consistencyPct, overallPct };
+}
+function ringArc(cx, cy, r, pct, color, width) {
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (Math.min(Math.max(pct,0),100) / 100) * circ;
+  return `
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-opacity="0.15" stroke-width="${width}"></circle>
+    <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${color}" stroke-width="${width}" stroke-linecap="round"
+      stroke-dasharray="${circ}" stroke-dashoffset="${offset}" transform="rotate(-90 ${cx} ${cy})"></circle>
+  `;
+}
+
+function renderToday() {
+  const app = document.getElementById("app");
+  const currentMood = state.moodByDate[todayKey];
+  const currentNote = state.noteByDate[todayKey] || "";
+  const streak = computeMoodStreak();
+  const colors = moodColors();
+
+  let goalsHtml = state.goals.map(g => {
+    const done = g.doneDates.includes(todayKey);
+    return `
+      <div class="goal-item">
+        <div class="goal-check ${done ? 'done' : ''}" onclick="toggleGoal('${g.id}', event)">${done ? '✓' : ''}</div>
+        <input class="goal-text ${done ? 'done' : ''}" value="${g.text.replace(/"/g,'&quot;')}" onchange="editGoalText('${g.id}', this.value)" />
+        <button class="del-btn" onclick="deleteGoal('${g.id}')">✕</button>
+      </div>`;
+  }).join("");
+  if (state.goals.length === 0) goalsHtml = `<div style="color:var(--muted); font-size:14px; padding:8px 0;">No goals yet — add your first one below.</div>`;
+
+  const todayNotes = notesForDate(todayKey);
+  let notesHtml = todayNotes.map(n => `
+      <div class="note-item">
+        <div class="note-body">
+          <div class="note-text">${n.text.replace(/</g,'&lt;')}</div>
+          <div class="note-time">${n.time}</div>
+        </div>
+        <button class="del-btn" onclick="deleteNote('${todayKey}','${n.id}')">✕</button>
+      </div>`).join("");
+  if (todayNotes.length === 0) notesHtml = `<div style="color:var(--muted); font-size:14px; padding:8px 0;">Nothing jotted down yet today.</div>`;
+
+  let historyHtml = last7Days().map(key => {
+    const m = state.moodByDate[key];
+    return `<div class="history-day" style="${m!==undefined ? 'background:'+colors[m]+';border-color:transparent;' : ''}">${m !== undefined ? MOODS[m] : '·'}</div>`;
+  }).join("");
+
+  app.innerHTML = `
+    <div class="card motivation-card">
+      <h2>✨ Today's Motivation</h2>
+      <div class="motivation-text">${getQuoteForToday()}</div>
+    </div>
+    <div class="card">
+      <h2>How are you feeling today?</h2>
+      <div class="mood-row">
+        ${MOODS.map((m,i) => `<div class="mood-btn ${currentMood===i?'selected':''}" onclick="setMood(${i}, event)">${m}</div>`).join("")}
+      </div>
+      <div style="margin-top:14px;">
+        <textarea placeholder="What's making today good (or hard)? Optional." oninput="setNote(this.value)">${currentNote}</textarea>
+      </div>
+    </div>
+    <div class="card streak">
+      <div><div class="streak-num">${streak}</div><div class="streak-label">day check-in streak</div></div>
+      <div class="history">${historyHtml}</div>
+    </div>
+    <div class="card">
+      <h2>Today's Goals</h2>
+      ${goalsHtml}
+      <div class="add-goal">
+        <input id="newGoalInput" placeholder="Add a goal…" onkeydown="if(event.key==='Enter'){addGoal(this.value); this.value='';}" />
+        <button onclick="const i=document.getElementById('newGoalInput'); addGoal(i.value); i.value='';">+</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>📝 Notes &amp; Ideas</h2>
+      ${notesHtml}
+      <div class="add-note">
+        <textarea id="newNoteInput" placeholder="Jot down a thought, idea, or anything worth remembering…"></textarea>
+        <button onclick="const i=document.getElementById('newNoteInput'); addNote(i.value); i.value='';">+</button>
+      </div>
+    </div>
+    <div class="save-note" id="saveNote"></div>
+  `;
+}
+
+function renderCalendar() {
+  const app = document.getElementById("app");
+  const colors = moodColors();
+  const y = calMonth.getFullYear(), m = calMonth.getMonth();
+  const firstDay = new Date(y, m, 1);
+  const startOffset = firstDay.getDay();
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const monthLabel = calMonth.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+
+  let cells = "";
+  for (let i = 0; i < startOffset; i++) cells += `<div class="cal-cell empty"></div>`;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const cellDate = new Date(y, m, d);
+    const key = fmtKey(cellDate);
+    const mood = state.moodByDate[key];
+    const isToday = key === todayKey;
+    const isSelected = key === selectedDay;
+    const completed = goalsCompletedOnDate(key);
+    const bg = mood !== undefined ? colors[mood] : 'var(--bg)';
+    const dots = completed > 0 ? `<div class="dot-row">${Array.from({length: Math.min(completed,4)}).map(()=>'<div class="dot"></div>').join("")}</div>` : "";
+    cells += `<div class="cal-cell ${isToday?'today':''} ${isSelected?'selected':''}" style="background:${bg};" onclick="selectDay('${key}')">
+      <div class="daynum">${d}</div><div class="emoji">${mood!==undefined ? MOODS[mood] : ''}</div>${dots}</div>`;
+  }
+  const weekdays = ['S','M','T','W','T','F','S'].map(w => `<div>${w}</div>`).join("");
+
+  let loggedDays = 0, moodSum = 0, totalGoalChecks = 0;
+  for (let d = 1; d <= daysInMonth; d++) {
+    const key = fmtKey(new Date(y, m, d));
+    if (state.moodByDate[key] !== undefined) { loggedDays++; moodSum += state.moodByDate[key]; }
+    totalGoalChecks += goalsCompletedOnDate(key);
+  }
+  const avgMood = loggedDays > 0 ? (moodSum / loggedDays) : null;
+  const avgMoodEmoji = avgMood !== null ? MOODS[Math.round(avgMood)] : "—";
+
+  const detailDate = new Date(selectedDay + "T00:00:00");
+  const detailLabel = detailDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  const detailMood = state.moodByDate[selectedDay];
+  const detailNote = state.noteByDate[selectedDay];
+  const goalsForDay = state.goals.map(g => ({ text: g.text, done: g.doneDates.includes(selectedDay) }));
+  let detailGoalsHtml = goalsForDay.length
+    ? goalsForDay.map(g => `<div class="dd-goal"><span class="${g.done?'tick':'cross'}">${g.done?'✓':'○'}</span> ${g.text}</div>`).join("")
+    : `<div class="dd-empty">No goals tracked.</div>`;
+  const detailNotes = notesForDate(selectedDay);
+  let detailNotesHtml = detailNotes.length
+    ? detailNotes.map(n => `<div class="dd-goal">📝 ${n.text.replace(/</g,'&lt;')}</div>`).join("")
+    : "";
+
+  app.innerHTML = `
+    <div class="card">
+      <div class="cal-header">
+        <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+        <div class="cal-month-label">${monthLabel}</div>
+        <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+      </div>
+      <div class="cal-weekdays">${weekdays}</div>
+      <div class="cal-grid">${cells}</div>
+      <div class="cal-legend">
+        ${MOODS.map((mo,i) => `<span><span class="legend-swatch" style="background:${colors[i]}"></span>${mo}</span>`).join("")}
+        <span><span class="legend-swatch" style="background:var(--green); border-radius:50%; width:8px; height:8px;"></span>goal done</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>This Month</h2>
+      <div class="month-stats">
+        <div class="stat-box"><div class="stat-num">${avgMoodEmoji}</div><div class="stat-label">avg mood</div></div>
+        <div class="stat-box"><div class="stat-num">${loggedDays}</div><div class="stat-label">days logged</div></div>
+        <div class="stat-box"><div class="stat-num">${totalGoalChecks}</div><div class="stat-label">goals checked</div></div>
+      </div>
+    </div>
+    <div class="card day-detail">
+      <h2>Day Detail</h2>
+      <div class="dd-title">${detailLabel} ${detailMood!==undefined ? MOODS[detailMood] : ''}</div>
+      ${detailNote ? `<div class="dd-note">"${detailNote.replace(/"/g,'&quot;')}"</div>` : ''}
+      ${detailGoalsHtml}
+      ${detailNotesHtml}
+    </div>
+  `;
+}
+
+function renderProgress() {
+  const app = document.getElementById("app");
+  const s = computeOverallStats();
+  const moodLabel = s.avgMoodRaw === null ? "—" : MOODS[Math.round(s.avgMoodRaw)];
+  const accent = cssVar('--accent'), green = cssVar('--green'), secondary = cssVar('--secondary');
+
+  const svg = `
+    <svg viewBox="0 0 200 200" width="220" height="220" class="progress-ring">
+      ${ringArc(100,100,85, s.consistencyPct, accent, 14)}
+      ${ringArc(100,100,65, s.goalsPct, green, 14)}
+      ${ringArc(100,100,45, s.moodPct, secondary, 14)}
+      <text x="100" y="95" text-anchor="middle" font-size="34" font-weight="700" fill="${cssVar('--text')}">${s.overallPct}%</text>
+      <text x="100" y="118" text-anchor="middle" font-size="12" fill="${cssVar('--muted')}">overall</text>
+    </svg>
+  `;
+
+  app.innerHTML = `
+    <div class="card">
+      <h2>Your System, At a Glance</h2>
+      <div class="ring-wrap">${svg}</div>
+      <div class="ring-legend">
+        <span><span class="ring-dot" style="background:${accent}"></span>Consistency ${s.consistencyPct}%</span>
+        <span><span class="ring-dot" style="background:${green}"></span>Goals ${s.goalsPct}%</span>
+        <span><span class="ring-dot" style="background:${secondary}"></span>Mood ${s.moodPct}%</span>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Development Details</h2>
+      <div class="detail-row"><span class="detail-label">Current streak</span><span class="detail-value">${s.currentStreak} day${s.currentStreak===1?'':'s'}</span></div>
+      <div class="detail-row"><span class="detail-label">Longest streak</span><span class="detail-value">${s.longestStreak} day${s.longestStreak===1?'':'s'}</span></div>
+      <div class="detail-row"><span class="detail-label">Days tracked</span><span class="detail-value">${s.daysTracked}</span></div>
+      <div class="detail-row"><span class="detail-label">Average mood</span><span class="detail-value">${moodLabel}</span></div>
+      <div class="detail-row"><span class="detail-label">Goals set</span><span class="detail-value">${state.goals.length}</span></div>
+      <div class="detail-row"><span class="detail-label">Goal check-ins (all time)</span><span class="detail-value">${s.totalGoalCompletions}</span></div>
+      <div class="detail-row"><span class="detail-label">Goal completion rate</span><span class="detail-value">${s.goalsPct}%</span></div>
+      <div class="detail-row"><span class="detail-label">Notes &amp; ideas captured</span><span class="detail-value">${Object.values(state.notesByDate||{}).reduce((sum,arr)=>sum+arr.length,0)}</span></div>
+    </div>
+  `;
+}
+
+function render() {
+  if (currentTab === 'today') renderToday();
+  else if (currentTab === 'calendar') renderCalendar();
+  else renderProgress();
+}
+
+loadTheme();
+loadState();
+loadReminderPref();
+</script>
+</body>
+</html>
