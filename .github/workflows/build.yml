@@ -1,6 +1,6 @@
 name: Build iOS IPA
 on:Workflow_dispatch:
-jobs: build: runs-on: macos-latest
+jobs:Build: runs-on: macos-latest
 steps:
   - name: Checkout repository
     uses: actions/checkout@v3
